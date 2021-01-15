@@ -5,9 +5,14 @@ var bodyParser = require('body-parser');
 var cors = require("cors");
 var morgan = require("morgan");
 const mongoose = require("mongoose");
-var bcrypt = require("bcrypt-inzi")
+var bcrypt = require("bcrypt-inzi");
+var jwt = require('jsonwebtoken');
+
+var SERVER_SECRET= process.env.SECRET || "1234"
 
 
+// var { userModel, otpModel } = require("../dbrepo/models");
+// console.log("userModel: ", userModel);
 
 let dbURI = "mongodb+srv://iamfarooqi:03325312621@cluster0.8tr9b.mongodb.net/TestDataBase?retryWrites=true&w=majority";
 mongoose.connect(dbURI, {
@@ -82,7 +87,7 @@ app.post("/signup", (req, res, next) => {
     }
 
 
-    })
+    
 
 
     userModel.findOne({ email: req.body.userEmail },
@@ -122,7 +127,86 @@ app.post("/signup", (req, res, next) => {
             }
         })
         
-        
+    })
+    
+    
+
+
+    //LOGIN
+
+    app.post("/login", (req, res, next) => {
+
+        if (!req.body.email || !req.body.password) {
+    
+            res.status(403).send(`
+                please send email and passwod in json body.
+                e.g:
+                {
+                    "email": "malikasinger@gmail.com",
+                    "password": "abc",
+                }`)
+            return;
+        }
+    
+        userModel.findOne({ email: req.body.email },
+            function (err, user) {
+                if (err) {
+                    res.status(500).send({
+                        message: "an error occured: " + JSON.stringify(err)
+                    });
+                } else if (user) {
+    
+                    bcrypt.varifyHash(req.body.password, user.password).then(isMatched => {
+                        if (isMatched) {
+                            console.log("matched");
+    
+                            var token =
+                                jwt.sign({
+                                    id: user._id,
+                                    name: user.name,
+                                    email: user.email,
+                                }, SERVER_SECRET)
+    
+                            res.cookie('jToken', token, {
+                                maxAge: 86_400_000,
+                                httpOnly: true
+                            });
+
+    
+    
+                            res.send({
+                                message: "login success",
+                                user: {
+                                    name: user.name,
+                                    email: user.email,
+                                    phone: user.phone,
+                                    gender: user.gender,
+                                }
+                            });
+    
+                        } else {
+                            console.log("not matched");
+                            res.status(401).send({
+                                message: "incorrect password"
+                            })
+                        }
+                    }).catch(e => {
+                        console.log("error: ", e)
+                    })
+    
+                } else {
+                    res.status(403).send({
+                        message: "user not found"
+                    });
+                }
+            });
+
+        })       
+    
+
+
+
+    //Server
         app.listen(PORT, () => {
             console.log("server is running on: ", PORT);
         })
