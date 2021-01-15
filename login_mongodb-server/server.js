@@ -16,19 +16,6 @@ var SERVER_SECRET= process.env.SECRET || "1234"
 
 // var userModel = mongoose.model("users", userSchema);
 
-var otpSchema = new mongoose.Schema({
-    "email": String,
-    "otpCode": String,
-    "createdOn": { "type": Date, "default": Date.now },
-});
-
-
-var otpModel = mongoose.model("otps", otpSchema);
-
-module.exports = {
-    userModel: userModel,
-    otpModel: otpModel
-}
 
 
 let dbURI = "mongodb+srv://iamfarooqi:03325312621@cluster0.8tr9b.mongodb.net/TestDataBase?retryWrites=true&w=majority";
@@ -66,7 +53,6 @@ var userSchema = new mongoose.Schema({
     email: String,
     password: String,
     phone: String,
-    gender: String,
     createdOn: {
         type: Date,
         'default': Date.now
@@ -75,6 +61,20 @@ var userSchema = new mongoose.Schema({
 var userModel = mongoose.model("users", userSchema);
 
 
+var otpSchema = new mongoose.Schema({
+    "email": String,
+    "otpCode": String,
+    "createdOn": { "type": Date, "default": Date.now },
+});
+
+
+var otpModel = mongoose.model("otps", otpSchema);
+
+module.exports = {
+    userModel: userModel,
+    otpModel: otpModel
+}
+
 var app = express();
 
 app.use(bodyParser.json());
@@ -82,7 +82,8 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(cookieParser());
 
-//SIGNUP
+
+//******* SIGNUP ********//
 
 
 app.post("/signup", (req, res, next) => {
