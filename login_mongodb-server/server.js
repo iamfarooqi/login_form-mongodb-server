@@ -7,12 +7,29 @@ var morgan = require("morgan");
 const mongoose = require("mongoose");
 var bcrypt = require("bcrypt-inzi");
 var jwt = require('jsonwebtoken');
+var cookieParser = require('cookie-parser');
+var postmark = require("postmark");
+
+var client = new postmark.Client("6b04597f-44f8-47bc-8f77-ba7597d57781");
 
 var SERVER_SECRET= process.env.SECRET || "1234"
 
+// var userModel = mongoose.model("users", userSchema);
 
-// var { userModel, otpModel } = require("../dbrepo/models");
-// console.log("userModel: ", userModel);
+var otpSchema = new mongoose.Schema({
+    "email": String,
+    "otpCode": String,
+    "createdOn": { "type": Date, "default": Date.now },
+});
+
+
+var otpModel = mongoose.model("otps", otpSchema);
+
+module.exports = {
+    userModel: userModel,
+    otpModel: otpModel
+}
+
 
 let dbURI = "mongodb+srv://iamfarooqi:03325312621@cluster0.8tr9b.mongodb.net/TestDataBase?retryWrites=true&w=majority";
 mongoose.connect(dbURI, {
@@ -63,6 +80,9 @@ var app = express();
 app.use(bodyParser.json());
 app.use(cors());
 app.use(morgan('dev'));
+app.use(cookieParser());
+
+//SIGNUP
 
 
 app.post("/signup", (req, res, next) => {
@@ -132,7 +152,7 @@ app.post("/signup", (req, res, next) => {
     
 
 
-    //LOGIN
+//LOGIN
 
     app.post("/login", (req, res, next) => {
 
@@ -201,12 +221,213 @@ app.post("/signup", (req, res, next) => {
                 }
             });
 
-        })       
-    
+        }) 
+        
+//FORGOT PASSWORD
+
+app.post("/forget-password", (req, res, next) => {
+
+    if (!req.body.email) {
+
+        res.status(403).send(`
+            please send email in json body.
+            e.g:
+            {
+                "email": "farooqi@gmail.com"
+            }`)
+        return;
+    }
+
+    userModel.findOne({ email: req.body.email },
+        function (err, user) {
+            if (err) {
+                res.status(500).send({
+                    message: "an error occured: " + JSON.stringify(err)
+                });
+            } else if (user) {
+                const otp = Math.floor(getRandomArbitrary(11111, 99999))
+
+                otpModel.create({
+                    email: req.body.email,
+                    otpCode: otp
+                }).then((doc) => {
+
+                    client.sendEmail({
+                        "From": "noman_student@sysborg.com",
+                        "To": req.body.email,
+                        "Subject": "Reset your password",
+                        "TextBody": `Here is your pasword reset code: ${otp}`
+                    }).then((status) => {
+
+                        console.log("status: ", status);
+                        res.send("email sent with otp")
+
+                    })
+
+                }).catch((err) => {
+                    console.log("error in creating otp: ", err);
+                    res.status(500).send("unexpected error ")
+                })
+
+
+            } else {
+                res.status(403).send({
+                    message: "user not found"
+                });
+            }
+        });
+})
+
+app.post("/forget-password-step-2", (req, res, next) => {
+
+    if (!req.body.email && !req.body.otp && !req.body.newPassword) {
+
+        res.status(403).send(`
+            please send email & otp in json body.
+            e.g:
+            {
+                "email": "farooqi@gmail.com",
+                "newPassword": "******",
+                "otp": "#####" 
+            }`)
+        return;
+    }
+
+    userModel.findOne({ email: req.body.email },
+        function (err, user) {
+            if (err) {
+                res.status(500).send({
+                    message: "an error occured: " + JSON.stringify(err)
+                });
+            } else if (user) {
+
+                otpModel.find({ email: req.body.email },
+                    function (err, otpData) {
 
 
 
-    //Server
+                        if (err) {
+                            res.status(500).send({
+                                message: "an error occured: " + JSON.stringify(err)
+                            });
+                        } else if (otpData) {
+                            otpData = otpData[otpData.length - 1]
+
+                            console.log("otpData: ", otpData);
+
+                            const now = new Date().getTime();
+                            const otpIat = new Date(otpData.createdOn).getTime(); // 2021-01-06T13:08:33.657+0000
+                            const diff = now - otpIat; // 300000 5 minute
+
+                            console.log("diff: ", diff);
+
+                            if (otpData.otpCode === req.body.otp && diff < 300000) { // correct otp code
+                                otpData.remove()
+
+                                bcrypt.stringToHash(req.body.newPassword).then(function (hash) {
+                                    user.update({ password: hash }, {}, function (err, data) {
+                                        res.send("password updated");
+                                    })
+                                })
+
+                            } else {
+                                res.status(401).send({
+                                    message: "incorrect otp"
+                                });
+                            }
+                        } else {
+                            res.status(401).send({
+                                message: "incorrect otp"
+                            });
+                        }
+                    })
+
+            } else {
+                res.status(403).send({
+                    message: "user not found"
+                });
+            }
+        });
+})
+
+
+//LOGOUT
+        
+        app.post("/logout", (req, res, next) => {
+            res.cookie('jToken', "", {
+                maxAge: 86_400_000,
+                httpOnly: true
+            });
+            res.send("logout success");
+        })
+
+
+        function getRandomArbitrary(min, max) {
+            return Math.random() * (max - min) + min;
+        } 
+
+//PROFILE
+
+// app.get("/profile", (req, res, next) => {
+
+//     console.log(req.body)
+
+//     userModel.findById(req.body.jToken.id, 'name email phone gender createdOn',
+//         function (err, doc) {
+//             if (!err) {
+//                 res.send({
+//                     profile: doc
+//                 })
+
+//             } else {
+//                 res.status(500).send({
+//                     message: "server error"
+//                 })
+//             }
+//         })
+// })
+
+
+//COOKIES
+
+app.use(function (req, res, next) {
+
+    console.log("req.cookies: ", req.cookies);
+    if (!req.cookies.jToken) {
+        res.status(401).send("include http-only credentials with every request")
+        return;
+    }
+    jwt.verify(req.cookies.jToken, SERVER_SECRET, function (err, decodedData) {
+        if (!err) {
+
+            const issueDate = decodedData.iat * 1000;
+            const nowDate = new Date().getTime();
+            const diff = nowDate - issueDate; // 86400,000
+
+            if (diff > 300000) { // expire after 5 min (in milis)
+                res.status(401).send("token expired")
+            } else { // issue new token
+                var token = jwt.sign({
+                    id: decodedData.id,
+                    name: decodedData.name,
+                    email: decodedData.email,
+                }, SERVER_SECRET)
+                res.cookie('jToken', token, {
+                    maxAge: 86_400_000,
+                    httpOnly: true
+                });
+                req.body.jToken = decodedData
+                next();
+            }
+        } else {
+            res.status(401).send("invalid token")
+        }
+    });
+})
+
+
+
+//Server
         app.listen(PORT, () => {
             console.log("server is running on: ", PORT);
         })
