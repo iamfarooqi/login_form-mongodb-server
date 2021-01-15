@@ -5,6 +5,7 @@ var bodyParser = require('body-parser');
 var cors = require("cors");
 var morgan = require("morgan");
 const mongoose = require("mongoose");
+var bcrypt = require("bcrypt-inzi")
 
 
 
@@ -80,24 +81,56 @@ app.post("/signup", (req, res, next) => {
         return;
     }
 
-    var newUser = new userModel({
-        "name": req.body.userName,
-        "email": req.body.userEmail,
-        "password": req.body.userPassword,
-        "phone": req.body.userPhone,
 
     })
 
-    newUser.save((err, data) => {
-        if (!err) {
-            res.send("user created")
-        } else {
-            console.log(err);
-            res.status(500).send("user create error, " + err)
-        }
-    });
-})
 
-app.listen(PORT, () => {
-    console.log("server is running on: ", PORT);
-})
+    userModel.findOne({ email: req.body.userEmail },
+        function (err, doc) {
+            if (!err && !doc) {
+                
+                bcrypt.stringToHash(req.body.userPassword).then(function (hash) {
+                    
+                    var newUser = new userModel({
+                        "name": req.body.userName,
+                        "email": req.body.userEmail,
+                        "password": hash,
+                        "phone": req.body.userPhone,
+                    })
+                    newUser.save((err, data) => {
+                        if (!err) {
+                            res.send({
+                                message: "user created"
+                            })
+                        } else {
+                            console.log(err);
+                            res.status(500).send({
+                                message: "user create error, " + err
+                            })
+                        }
+                    });
+                })
+                
+            } else if (err) {
+                res.status(500).send({
+                    message: "db error"
+                })
+            } else {
+                res.status(409).send({
+                    message: "user already exist"
+                })
+            }
+        })
+        
+        
+        app.listen(PORT, () => {
+            console.log("server is running on: ", PORT);
+        })
+        // newUser.save((err, data) => {
+        //     if (!err) {
+        //         res.send("user created")
+        //     } else {
+        //         console.log(err);
+        //         res.status(500).send("user create error, " + err)
+        //     }
+        // });
