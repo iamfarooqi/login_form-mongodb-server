@@ -53,3 +53,60 @@ function login() {
 
     return false;
 }
+
+
+//FORGET STEP-1
+
+function forgot1() {
+
+    axios({
+        method: 'post',
+        url: "http://localhost:5000/forget-password",
+        data: {
+            email: document.getElementById("your-email").value,
+        }
+        // withCredentials: true
+    }).then((response) => {
+        if (response.data.status === 200) {
+            console.log(response.data.message);
+            alert(response.data.message);
+            window.location.href = "forget2.html"
+        } else {
+            alert(response.data.message)
+        }
+    }, (error) => {
+        console.log(error);
+    });
+
+    return false;
+
+}
+
+
+function forgot2() {
+    axios({
+        method: 'post',
+        url: "http://localhost:5000/forget-password-step2",
+        data: {
+            email: document.getElementById("email2").value,
+            newPassword: document.getElementById("password2").value,
+            otp: document.getElementById("otp").value,
+        },
+        withCredentials: true
+    }).then((response) => {
+        if (response.data.status === 200) {
+            console.log(response.data.message);
+            alert(response.data.message);
+            window.location.href = "./../login.html"
+            return
+        } else {
+            alert(response.data.message)
+        }
+    }, (error) => {
+        console.log(error);
+    });
+    return false;
+
+}
+
+
