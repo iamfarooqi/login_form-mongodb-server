@@ -9,6 +9,8 @@ var bcrypt = require("bcrypt-inzi");
 var jwt = require('jsonwebtoken');
 var cookieParser = require('cookie-parser');
 var postmark = require("postmark");
+const path = require("path");
+const axios = require('axios')
 
 var client = new postmark.Client("6b04597f-44f8-47bc-8f77-ba7597d57781");
 
@@ -78,9 +80,17 @@ module.exports = {
 var app = express();
 
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors(
+    {
+        origin: "*",
+        credentials: true
+    }
+));
 app.use(morgan('dev'));
 app.use(cookieParser());
+
+app.use("/", express.static(path.resolve(path.join(__dirname, "public"))));
+
 
 
 //******* SIGNUP ********//
@@ -142,8 +152,9 @@ app.post("/signup", (req, res, next) => {
                     message: "db error"
                 })
             } else {
-                res.status(409).send({
-                    message: "user already exist"
+                res.send({
+                    message: "User already exist ",
+                    status: 409
                 })
             }
         })
@@ -160,7 +171,7 @@ app.post("/signup", (req, res, next) => {
         if (!req.body.email || !req.body.password) {
     
             res.status(403).send(`
-                please send email and passwod in json body.
+                please send email and password in json body.
                 e.g:
                 {
                     "email": "malikasinger@gmail.com",
@@ -223,8 +234,12 @@ app.post("/signup", (req, res, next) => {
             });
 
         }) 
+
+
         
 //FORGOT PASSWORD
+
+
 
 app.post("/forget-password", (req, res, next) => {
 
@@ -352,7 +367,11 @@ app.post("/forget-password-step-2", (req, res, next) => {
 })
 
 
+
+
 //LOGOUT
+
+
         
         app.post("/logout", (req, res, next) => {
             res.cookie('jToken', "", {
