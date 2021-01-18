@@ -12,9 +12,9 @@ var postmark = require("postmark");
 const path = require("path");
 const axios = require('axios')
 
-var client = new postmark.Client("6b04597f-44f8-47bc-8f77-ba7597d57781");
+var client = new postmark.Client("03d41ca2-fd57-4edd-9e9e-506ac1aaf894");
 
-var SERVER_SECRET= process.env.SECRET || "1234"
+var SERVER_SECRET = process.env.SECRET || "1234"
 
 // var userModel = mongoose.model("users", userSchema);
 
@@ -118,15 +118,15 @@ app.post("/signup", (req, res, next) => {
     }
 
 
-    
+
 
 
     userModel.findOne({ email: req.body.userEmail },
         function (err, doc) {
             if (!err && !doc) {
-                
+
                 bcrypt.stringToHash(req.body.userPassword).then(function (hash) {
-                    
+
                     var newUser = new userModel({
                         "name": req.body.userName,
                         "email": req.body.userEmail,
@@ -146,7 +146,7 @@ app.post("/signup", (req, res, next) => {
                         }
                     });
                 })
-                
+
             } else if (err) {
                 res.status(500).send({
                     message: "db error"
@@ -158,85 +158,85 @@ app.post("/signup", (req, res, next) => {
                 })
             }
         })
-        
-    })
-    
-    
+
+})
+
+
 
 
 //LOGIN
 
-    app.post("/login", (req, res, next) => {
+app.post("/login", (req, res, next) => {
 
-        if (!req.body.email || !req.body.password) {
-    
-            res.status(403).send(`
+    if (!req.body.email || !req.body.password) {
+
+        res.status(403).send(`
                 please send email and password in json body.
                 e.g:
                 {
                     "email": "malikasinger@gmail.com",
                     "password": "abc",
                 }`)
-            return;
-        }
-    
-        userModel.findOne({ email: req.body.email },
-            function (err, user) {
-                if (err) {
-                    res.status(500).send({
-                        message: "an error occured: " + JSON.stringify(err)
-                    });
-                } else if (user) {
-    
-                    bcrypt.varifyHash(req.body.password, user.password).then(isMatched => {
-                        if (isMatched) {
-                            console.log("matched");
-    
-                            var token =
-                                jwt.sign({
-                                    id: user._id,
-                                    name: user.name,
-                                    email: user.email,
-                                }, SERVER_SECRET)
-    
-                            res.cookie('jToken', token, {
-                                maxAge: 86_400_000,
-                                httpOnly: true
-                            });
+        return;
+    }
 
-    
-    
-                            res.send({
-                                message: "login success",
-                                user: {
-                                    name: user.name,
-                                    email: user.email,
-                                    phone: user.phone,
-                                    gender: user.gender,
-                                }
-                            });
-    
-                        } else {
-                            console.log("not matched");
-                            res.status(401).send({
-                                message: "incorrect password"
-                            })
-                        }
-                    }).catch(e => {
-                        console.log("error: ", e)
-                    })
-    
-                } else {
-                    res.status(403).send({
-                        message: "user not found"
-                    });
-                }
-            });
+    userModel.findOne({ email: req.body.email },
+        function (err, user) {
+            if (err) {
+                res.status(500).send({
+                    message: "an error occured: " + JSON.stringify(err)
+                });
+            } else if (user) {
 
-        }) 
+                bcrypt.varifyHash(req.body.password, user.password).then(isMatched => {
+                    if (isMatched) {
+                        console.log("matched");
+
+                        var token =
+                            jwt.sign({
+                                id: user._id,
+                                name: user.name,
+                                email: user.email,
+                            }, SERVER_SECRET)
+
+                        res.cookie('jToken', token, {
+                            maxAge: 86_400_000,
+                            httpOnly: true
+                        });
 
 
-        
+
+                        res.send({
+                            message: "login success",
+                            user: {
+                                name: user.name,
+                                email: user.email,
+                                phone: user.phone,
+                                gender: user.gender,
+                            }
+                        });
+
+                    } else {
+                        console.log("not matched");
+                        res.status(401).send({
+                            message: "incorrect password"
+                        })
+                    }
+                }).catch(e => {
+                    console.log("error: ", e)
+                })
+
+            } else {
+                res.status(403).send({
+                    message: "user not found"
+                });
+            }
+        });
+
+})
+
+
+
 //FORGOT PASSWORD
 
 
@@ -269,14 +269,17 @@ app.post("/forget-password", (req, res, next) => {
                 }).then((doc) => {
 
                     client.sendEmail({
-                        "From": "noman_student@sysborg.com",
+                        "From": "ahmed_student@sysborg.com",
                         "To": req.body.email,
                         "Subject": "Reset your password",
                         "TextBody": `Here is your pasword reset code: ${otp}`
                     }).then((status) => {
 
                         console.log("status: ", status);
-                        res.send("email sent with otp")
+                        res.send({
+                            message: "Email Send OPT",
+                            status: 200
+                        })
 
                     })
 
@@ -372,19 +375,19 @@ app.post("/forget-password-step-2", (req, res, next) => {
 //LOGOUT
 
 
-        
-        app.post("/logout", (req, res, next) => {
-            res.cookie('jToken', "", {
-                maxAge: 86_400_000,
-                httpOnly: true
-            });
-            res.send("logout success");
-        })
+
+app.post("/logout", (req, res, next) => {
+    res.cookie('jToken', "", {
+        maxAge: 86_400_000,
+        httpOnly: true
+    });
+    res.send("logout success");
+})
 
 
-        function getRandomArbitrary(min, max) {
-            return Math.random() * (max - min) + min;
-        } 
+function getRandomArbitrary(min, max) {
+    return Math.random() * (max - min) + min;
+}
 
 //PROFILE
 
@@ -448,9 +451,9 @@ app.use(function (req, res, next) {
 
 
 //Server
-        app.listen(PORT, () => {
-            console.log("server is running on: ", PORT);
-        })
+app.listen(PORT, () => {
+    console.log("server is running on: ", PORT);
+})
         // newUser.save((err, data) => {
         //     if (!err) {
         //         res.send("user created")

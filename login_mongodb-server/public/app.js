@@ -97,7 +97,7 @@ function forgot2() {
         if (response.data.status === 200) {
             console.log(response.data.message);
             alert(response.data.message);
-            window.location.href = "./../login.html"
+            window.location.href = "login.html"
             return
         } else {
             alert(response.data.message)
